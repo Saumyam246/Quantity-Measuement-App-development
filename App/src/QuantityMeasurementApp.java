@@ -1,5 +1,4 @@
-// UC10 + UC11: Generic Quantity System with Length, Weight, Volume
-
+// ================= IMeasurable =================
 interface IMeasurable {
     double getConversionFactor();
     double convertToBaseUnit(double value);
@@ -7,7 +6,7 @@ interface IMeasurable {
     String getUnitName();
 }
 
-// ---------------- LENGTH ----------------
+// ================= LENGTH =================
 enum LengthUnit implements IMeasurable {
     FEET(1.0),
     INCHES(1.0 / 12.0),
@@ -37,7 +36,7 @@ enum LengthUnit implements IMeasurable {
     }
 }
 
-// ---------------- WEIGHT ----------------
+// ================= WEIGHT =================
 enum WeightUnit implements IMeasurable {
     KILOGRAM(1.0),
     GRAM(0.001),
@@ -66,7 +65,7 @@ enum WeightUnit implements IMeasurable {
     }
 }
 
-// ---------------- VOLUME (UC11) ----------------
+// ================= VOLUME =================
 enum VolumeUnit implements IMeasurable {
     LITRE(1.0),
     MILLILITRE(0.001),
@@ -95,14 +94,13 @@ enum VolumeUnit implements IMeasurable {
     }
 }
 
-// ---------------- GENERIC QUANTITY ----------------
+// ================= GENERIC QUANTITY (UC10–UC12 CORE) =================
 class Quantity<U extends IMeasurable> {
     private final double value;
     private final U unit;
 
     public Quantity(double value, U unit) {
-        if (unit == null)
-            throw new IllegalArgumentException("Unit cannot be null");
+        if (unit == null) throw new IllegalArgumentException("Unit cannot be null");
         if (Double.isNaN(value) || Double.isInfinite(value))
             throw new IllegalArgumentException("Invalid value");
 
@@ -118,30 +116,60 @@ class Quantity<U extends IMeasurable> {
         return unit;
     }
 
-    // Convert
+    // ================= CONVERSION =================
     public Quantity<U> convertTo(U targetUnit) {
         double base = unit.convertToBaseUnit(value);
         double converted = targetUnit.convertFromBaseUnit(base);
         return new Quantity<>(round(converted), targetUnit);
     }
 
-    // Add (same unit result)
+    // ================= ADDITION =================
     public Quantity<U> add(Quantity<U> other) {
         return add(other, this.unit);
     }
 
-    // Add (target unit)
     public Quantity<U> add(Quantity<U> other, U targetUnit) {
-        double base1 = this.unit.convertToBaseUnit(this.value);
-        double base2 = other.unit.convertToBaseUnit(other.value);
+        double sum = this.unit.convertToBaseUnit(this.value)
+                + other.unit.convertToBaseUnit(other.value);
 
-        double sumBase = base1 + base2;
-        double result = targetUnit.convertFromBaseUnit(sumBase);
-
-        return new Quantity<>(round(result), targetUnit);
+        return new Quantity<>(round(targetUnit.convertFromBaseUnit(sum)), targetUnit);
     }
 
-    // Equality
+    // ================= SUBTRACTION (UC12) =================
+    public Quantity<U> subtract(Quantity<U> other) {
+        return subtract(other, this.unit);
+    }
+
+    public Quantity<U> subtract(Quantity<U> other, U targetUnit) {
+        validate(other);
+
+        double result = this.unit.convertToBaseUnit(this.value)
+                - other.unit.convertToBaseUnit(other.value);
+
+        return new Quantity<>(round(targetUnit.convertFromBaseUnit(result)), targetUnit);
+    }
+
+    // ================= DIVISION (UC12) =================
+    public double divide(Quantity<U> other) {
+        validate(other);
+
+        double divisor = other.unit.convertToBaseUnit(other.value);
+        if (divisor == 0) throw new ArithmeticException("Division by zero");
+
+        double dividend = this.unit.convertToBaseUnit(this.value);
+
+        return dividend / divisor;
+    }
+
+    // ================= VALIDATION =================
+    private void validate(Quantity<U> other) {
+        if (other == null) throw new IllegalArgumentException("Quantity cannot be null");
+
+        if (!this.unit.getClass().equals(other.unit.getClass()))
+            throw new IllegalArgumentException("Cross-category operation not allowed");
+    }
+
+    // ================= EQUALITY =================
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
@@ -149,20 +177,18 @@ class Quantity<U extends IMeasurable> {
 
         Quantity<?> other = (Quantity<?>) obj;
 
-        // Prevent cross-category comparison
         if (!this.unit.getClass().equals(other.unit.getClass()))
             return false;
 
-        double base1 = this.unit.convertToBaseUnit(this.value);
-        double base2 = ((IMeasurable) other.unit).convertToBaseUnit(other.value);
+        double b1 = this.unit.convertToBaseUnit(this.value);
+        double b2 = ((IMeasurable) other.unit).convertToBaseUnit(other.value);
 
-        return Math.abs(base1 - base2) < 0.0001;
+        return Math.abs(b1 - b2) < 0.0001;
     }
 
     @Override
     public int hashCode() {
-        double base = unit.convertToBaseUnit(value);
-        return Double.hashCode(base);
+        return Double.hashCode(unit.convertToBaseUnit(value));
     }
 
     @Override
@@ -170,63 +196,65 @@ class Quantity<U extends IMeasurable> {
         return "Quantity(" + value + ", " + unit.getUnitName() + ")";
     }
 
-    private double round(double val) {
-        return Math.round(val * 100.0) / 100.0;
+    private double round(double v) {
+        return Math.round(v * 100.0) / 100.0;
     }
 }
 
-// ---------------- APP ----------------
+// ================= APP (UC10–UC12 DEMO) =================
 public class QuantityMeasurementApp {
 
-    // Generic methods
-    public static <U extends IMeasurable> void demonstrateEquality(
-            Quantity<U> q1, Quantity<U> q2) {
-        System.out.println(q1 + " == " + q2 + " → " + q1.equals(q2));
+    public static <U extends IMeasurable> void eq(Quantity<U> a, Quantity<U> b) {
+        System.out.println(a + " == " + b + " → " + a.equals(b));
     }
 
-    public static <U extends IMeasurable> void demonstrateConversion(
-            Quantity<U> q, U target) {
-        System.out.println(q + " → " + q.convertTo(target));
+    public static <U extends IMeasurable> void conv(Quantity<U> a, U u) {
+        System.out.println(a + " → " + a.convertTo(u));
     }
 
-    public static <U extends IMeasurable> void demonstrateAddition(
-            Quantity<U> q1, Quantity<U> q2, U target) {
-        System.out.println(q1 + " + " + q2 + " → " + q1.add(q2, target));
+    public static <U extends IMeasurable> void add(Quantity<U> a, Quantity<U> b, U u) {
+        System.out.println(a + " + " + b + " → " + a.add(b, u));
+    }
+
+    public static <U extends IMeasurable> void sub(Quantity<U> a, Quantity<U> b, U u) {
+        System.out.println(a + " - " + b + " → " + a.subtract(b, u));
+    }
+
+    public static <U extends IMeasurable> void div(Quantity<U> a, Quantity<U> b) {
+        System.out.println(a + " / " + b + " → " + a.divide(b));
     }
 
     public static void main(String[] args) {
 
-        // -------- LENGTH --------
-        Quantity<LengthUnit> l1 = new Quantity<>(1.0, LengthUnit.FEET);
-        Quantity<LengthUnit> l2 = new Quantity<>(12.0, LengthUnit.INCHES);
+        // ===== LENGTH =====
+        Quantity<LengthUnit> l1 = new Quantity<>(10, LengthUnit.FEET);
+        Quantity<LengthUnit> l2 = new Quantity<>(6, LengthUnit.INCHES);
 
-        demonstrateEquality(l1, l2);
-        demonstrateConversion(l1, LengthUnit.INCHES);
-        demonstrateAddition(l1, l2, LengthUnit.FEET);
+        eq(l1, l2);
+        conv(l1, LengthUnit.INCHES);
+        add(l1, l2, LengthUnit.FEET);
+        sub(l1, l2, LengthUnit.FEET);
+        div(l1, new Quantity<>(5, LengthUnit.FEET));
 
-        // -------- WEIGHT --------
-        Quantity<WeightUnit> w1 = new Quantity<>(1.0, WeightUnit.KILOGRAM);
-        Quantity<WeightUnit> w2 = new Quantity<>(1000.0, WeightUnit.GRAM);
+        // ===== WEIGHT =====
+        Quantity<WeightUnit> w1 = new Quantity<>(10, WeightUnit.KILOGRAM);
+        Quantity<WeightUnit> w2 = new Quantity<>(5000, WeightUnit.GRAM);
 
-        demonstrateEquality(w1, w2);
-        demonstrateConversion(w1, WeightUnit.GRAM);
-        demonstrateAddition(w1, w2, WeightUnit.KILOGRAM);
+        eq(w1, w2);
+        sub(w1, w2, WeightUnit.KILOGRAM);
+        div(w1, w2);
 
-        // -------- VOLUME (UC11) --------
-        Quantity<VolumeUnit> v1 = new Quantity<>(1.0, VolumeUnit.LITRE);
-        Quantity<VolumeUnit> v2 = new Quantity<>(1000.0, VolumeUnit.MILLILITRE);
-        Quantity<VolumeUnit> v3 = new Quantity<>(1.0, VolumeUnit.GALLON);
+        // ===== VOLUME =====
+        Quantity<VolumeUnit> v1 = new Quantity<>(5, VolumeUnit.LITRE);
+        Quantity<VolumeUnit> v2 = new Quantity<>(500, VolumeUnit.MILLILITRE);
 
-        demonstrateEquality(v1, v2);
-        demonstrateConversion(v1, VolumeUnit.MILLILITRE);
-        demonstrateAddition(v1, v2, VolumeUnit.LITRE);
+        eq(v1, v2);
+        add(v1, v2, VolumeUnit.LITRE);
+        sub(v1, v2, VolumeUnit.LITRE);
+        div(v1, v2);
 
-        demonstrateConversion(v3, VolumeUnit.LITRE);
-        demonstrateAddition(v1, v3, VolumeUnit.MILLILITRE);
-
-        // -------- CROSS CATEGORY --------
-        System.out.println("Cross Category:");
-        System.out.println(l1.equals((Object) w1)); // false
-        System.out.println(v1.equals((Object) l1)); // false
+        // ===== CROSS CATEGORY SAFETY =====
+        System.out.println("Cross category check:");
+        System.out.println(l1.equals(v1)); // false
     }
 }
