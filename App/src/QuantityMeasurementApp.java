@@ -62,27 +62,42 @@ public class QuantityMeasurementApp {
             return targetUnit.fromFeet(feetValue);
         }
 
-        // UC6 ADD METHOD
+        // =========================
+        // UC6: Default (first operand unit)
+        // =========================
         public QuantityLength add(QuantityLength other) {
             if (other == null) {
                 throw new IllegalArgumentException("Other quantity cannot be null");
             }
-
-            double sumFeet = this.toFeet() + other.toFeet();
-            double result = fromFeet(sumFeet, this.unit);
-
-            return new QuantityLength(result, this.unit);
+            return add(this, other, this.unit);
         }
 
-        // Static version (optional)
-        public static QuantityLength add(QuantityLength q1, QuantityLength q2) {
+        // =========================
+        // UC7: Explicit Target Unit
+        // =========================
+        public static QuantityLength add(QuantityLength q1,
+                                         QuantityLength q2,
+                                         LengthUnit targetUnit) {
+
             if (q1 == null || q2 == null) {
-                throw new IllegalArgumentException("Inputs cannot be null");
+                throw new IllegalArgumentException("Operands cannot be null");
             }
-            return q1.add(q2);
+            if (targetUnit == null) {
+                throw new IllegalArgumentException("Target unit cannot be null");
+            }
+
+            // Convert to base (feet)
+            double sumFeet = q1.toFeet() + q2.toFeet();
+
+            // Convert to target unit
+            double result = fromFeet(sumFeet, targetUnit);
+
+            return new QuantityLength(result, targetUnit);
         }
 
-        // Equality using epsilon
+        // =========================
+        // Equality (epsilon-based)
+        // =========================
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -105,65 +120,91 @@ public class QuantityMeasurementApp {
     }
 
     // =========================
-    // MAIN METHOD (Demo)
+    // MAIN METHOD (Demo UC7)
     // =========================
     public static void main(String[] args) {
 
-        System.out.println("---- UC6 Addition Results ----");
+        System.out.println("---- UC7 Explicit Target Unit Results ----");
 
-        System.out.println(new QuantityLength(1.0, LengthUnit.FEET)
-                .add(new QuantityLength(2.0, LengthUnit.FEET)));
+        System.out.println(QuantityLength.add(
+                new QuantityLength(1.0, LengthUnit.FEET),
+                new QuantityLength(12.0, LengthUnit.INCHES),
+                LengthUnit.FEET));
 
-        System.out.println(new QuantityLength(1.0, LengthUnit.FEET)
-                .add(new QuantityLength(12.0, LengthUnit.INCHES)));
+        System.out.println(QuantityLength.add(
+                new QuantityLength(1.0, LengthUnit.FEET),
+                new QuantityLength(12.0, LengthUnit.INCHES),
+                LengthUnit.INCHES));
 
-        System.out.println(new QuantityLength(12.0, LengthUnit.INCHES)
-                .add(new QuantityLength(1.0, LengthUnit.FEET)));
+        System.out.println(QuantityLength.add(
+                new QuantityLength(1.0, LengthUnit.FEET),
+                new QuantityLength(12.0, LengthUnit.INCHES),
+                LengthUnit.YARDS));
 
-        System.out.println(new QuantityLength(1.0, LengthUnit.YARDS)
-                .add(new QuantityLength(3.0, LengthUnit.FEET)));
+        System.out.println(QuantityLength.add(
+                new QuantityLength(1.0, LengthUnit.YARDS),
+                new QuantityLength(3.0, LengthUnit.FEET),
+                LengthUnit.YARDS));
 
-        System.out.println(new QuantityLength(36.0, LengthUnit.INCHES)
-                .add(new QuantityLength(1.0, LengthUnit.YARDS)));
+        System.out.println(QuantityLength.add(
+                new QuantityLength(36.0, LengthUnit.INCHES),
+                new QuantityLength(1.0, LengthUnit.YARDS),
+                LengthUnit.FEET));
 
-        System.out.println(new QuantityLength(2.54, LengthUnit.CENTIMETERS)
-                .add(new QuantityLength(1.0, LengthUnit.INCHES)));
+        System.out.println(QuantityLength.add(
+                new QuantityLength(2.54, LengthUnit.CENTIMETERS),
+                new QuantityLength(1.0, LengthUnit.INCHES),
+                LengthUnit.CENTIMETERS));
 
-        System.out.println(new QuantityLength(5.0, LengthUnit.FEET)
-                .add(new QuantityLength(0.0, LengthUnit.INCHES)));
+        System.out.println(QuantityLength.add(
+                new QuantityLength(5.0, LengthUnit.FEET),
+                new QuantityLength(0.0, LengthUnit.INCHES),
+                LengthUnit.YARDS));
 
-        System.out.println(new QuantityLength(5.0, LengthUnit.FEET)
-                .add(new QuantityLength(-2.0, LengthUnit.FEET)));
+        System.out.println(QuantityLength.add(
+                new QuantityLength(5.0, LengthUnit.FEET),
+                new QuantityLength(-2.0, LengthUnit.FEET),
+                LengthUnit.INCHES));
 
         // =========================
-        // BASIC TEST VALIDATIONS
+        // VALIDATION TESTS
         // =========================
-        System.out.println("\n---- Test Validations ----");
+        System.out.println("\n---- UC7 Test Validations ----");
 
         QuantityLength a = new QuantityLength(1.0, LengthUnit.FEET);
         QuantityLength b = new QuantityLength(12.0, LengthUnit.INCHES);
 
         // Commutativity
-        System.out.println("Commutative: " + a.add(b).equals(b.add(a)));
+        System.out.println("Commutative (yards): " +
+                QuantityLength.add(a, b, LengthUnit.YARDS)
+                        .equals(QuantityLength.add(b, a, LengthUnit.YARDS)));
 
-        // Identity (zero)
-        QuantityLength zeroTest = new QuantityLength(5.0, LengthUnit.FEET)
-                .add(new QuantityLength(0.0, LengthUnit.INCHES));
-        System.out.println("Identity (5 ft + 0): " + zeroTest);
+        // Zero test
+        System.out.println("Zero test: " +
+                QuantityLength.add(
+                        new QuantityLength(5.0, LengthUnit.FEET),
+                        new QuantityLength(0.0, LengthUnit.INCHES),
+                        LengthUnit.YARDS));
 
-        // Negative values
-        QuantityLength negativeTest = new QuantityLength(5.0, LengthUnit.FEET)
-                .add(new QuantityLength(-2.0, LengthUnit.FEET));
-        System.out.println("Negative (5 ft + -2 ft): " + negativeTest);
+        // Negative test
+        System.out.println("Negative test: " +
+                QuantityLength.add(
+                        new QuantityLength(5.0, LengthUnit.FEET),
+                        new QuantityLength(-2.0, LengthUnit.FEET),
+                        LengthUnit.INCHES));
 
-        // Large values
-        QuantityLength largeTest = new QuantityLength(1e6, LengthUnit.FEET)
-                .add(new QuantityLength(1e6, LengthUnit.FEET));
-        System.out.println("Large values: " + largeTest);
+        // Large → small scale
+        System.out.println("Large to small: " +
+                QuantityLength.add(
+                        new QuantityLength(1000.0, LengthUnit.FEET),
+                        new QuantityLength(500.0, LengthUnit.FEET),
+                        LengthUnit.INCHES));
 
-        // Small values
-        QuantityLength smallTest = new QuantityLength(0.001, LengthUnit.FEET)
-                .add(new QuantityLength(0.002, LengthUnit.FEET));
-        System.out.println("Small values: " + smallTest);
+        // Small → large scale
+        System.out.println("Small to large: " +
+                QuantityLength.add(
+                        new QuantityLength(12.0, LengthUnit.INCHES),
+                        new QuantityLength(12.0, LengthUnit.INCHES),
+                        LengthUnit.YARDS));
     }
 }
